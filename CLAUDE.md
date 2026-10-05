@@ -38,3 +38,40 @@ L'ordre guide les arbitrages : ne pas construire une priorité basse au détrime
 - La **source** d'un contact/lead et l'**historique des étapes** d'un deal (dates d'entrée/sortie) doivent être stockés dès le départ : le reporting (priorité 5) en dépend et ne peut pas être reconstitué a posteriori.
 - Les échanges (emails, RDV, notes, appels) convergent vers un même historique rattaché au contact/compte, qu'ils soient saisis à la main ou synchronisés (priorité 4).
 - Usage pour plusieurs start-up : la séparation des données entre entreprises reste à décider (`docs/architecture.md`, §1.6).
+
+## Harnais anti-dérive (exigence, pas encore en place)
+
+Ce code est écrit en grande partie par des LLM. Le risque principal est la dérive : patterns incohérents, code mort, erreurs avalées, tests affaiblis pour passer. La qualité ne doit donc pas reposer sur les consignes de ce fichier, qui restent indicatives, mais sur des **vérifications déterministes impossibles à contourner**. Le harnais sera mis en place lors de l'initialisation du projet, avant le premier code applicatif. Les outils précis sont à choisir dans `docs/architecture.md` §6.
+
+- **Une seule commande `verify`** (nom à fixer) qui enchaîne tout. Elle est utilisée à l'identique par Claude, les hooks git et la CI.
+- **TypeScript au plus strict** : `strict`, plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `allowUnreachableCode: false`, `allowUnusedLabels: false`, `verbatimModuleSyntax`.
+- **Lint avec information de types** : interdiction de `any`, des promesses non attendues, des accès `unsafe`, de l'assertion non nulle `!`. Exhaustivité obligatoire des `switch` sur les unions.
+- **Règles d'architecture vérifiées par outil** : couches et sens des imports (le client n'importe jamais le serveur, les mutations restent pures), pas de cycles. Détection du code mort, des exports et dépendances inutilisés, et de la duplication.
+- **Tests** : la CI échoue si une suite ne contient aucun test. Seuils de couverture. Tests de mutation sur le cœur métier et le moteur de sync. Tests de convergence de la sync.
+- **Compteur de dérogations à cliquet** : le nombre de `@ts-expect-error`, de désactivations de lint et de casts `as` est mesuré. La vérification échoue s'il augmente.
+- **Hooks git** : un pre-commit rapide (format et lint des fichiers modifiés) et un pre-push qui lance `verify` en entier. Rien n'atteint le remote sans que `verify` passe. La CI rejoue `verify` côté serveur, donc un contournement local ne suffit pas.
+- **Hooks Claude Code** :
+  - après chaque édition, typecheck et lint du fichier modifié ;
+  - un hook Stop qui bloque la fin du tour tant que `verify` échoue ;
+  - un PreToolUse qui interdit de modifier les configs du harnais et de lancer des commandes avec `--no-verify`.
+
+## Règles de code
+
+Chaque règle est destinée à être appliquée par le harnais ci-dessus. En attendant, elle s'applique telle quelle.
+
+- **IMPORTANT : ne jamais affaiblir le harnais pour faire passer une vérification.** Cela inclut :
+  - modifier `tsconfig`, les configs de lint, d'architecture, de tests ou les hooks ;
+  - ajouter `any`, `@ts-ignore`, `@ts-expect-error`, un `as` de contournement, une assertion `!` ou une désactivation de lint ;
+  - utiliser `--no-verify`.
+  
+  Si une dérogation semble nécessaire : s'arrêter, expliquer pourquoi et demander. Une dérogation acceptée porte un commentaire qui en donne la raison.
+- **Ne jamais modifier, affaiblir ou supprimer un test existant pour qu'il passe.** Si un test paraît faux, le signaler et demander. Un test vérifie un comportement, pas une valeur codée en dur pour lui.
+- **Aucune nouvelle dépendance sans accord explicite.** Vérifier d'abord si le besoin est couvert par une dépendance existante, par Bun ou par la plateforme.
+- **Réutiliser avant de créer.** Chercher la fonction, le type ou le pattern existant. Si deux patterns existants se contredisent, le signaler plutôt que les mélanger.
+- **Faire le changement le plus petit qui résout la tâche.** Pas d'abstraction spéculative, pas de paramètre « pour plus tard », pas de couche de compatibilité : rien n'est encore en production.
+- **Les erreurs restent visibles.** Pas de `catch` vide, pas de `catch` qui journalise puis continue comme si de rien n'était, pas de valeur par défaut silencieuse qui masque une donnée manquante.
+- **Valider aux frontières, faire confiance aux types à l'intérieur.** Les entrées réseau, stockage et webhooks sont validées par schéma. Pas de vérifications défensives sur des valeurs déjà typées.
+- **Modéliser les états par des unions discriminées.** Pas de booléens combinés. Chaque `switch` sur une union se termine par un cas `never` exhaustif.
+- **Commentaires** : expliquer pourquoi, jamais ce que fait le code. Pas de code commenté, pas de commentaire qui raconte la modification.
+- **Une tâche n'est terminée que quand `verify` passe.** Montrer la commande et sa sortie, ne jamais affirmer un succès sans preuve. Après deux tentatives infructueuses sur la même erreur, s'arrêter et exposer le problème plutôt que de contourner.
+- **Les choix d'architecture de `docs/architecture.md` font foi.** Pour s'en écarter, proposer d'abord une modification du document, jamais directement dans le code.

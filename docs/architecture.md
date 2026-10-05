@@ -351,17 +351,7 @@ Contrainte du local-first : la session doit rester valable hors ligne. Si elle a
 
 ### 5.2 Lint et formatage
 
-- [ ] **A. Biome** (recommandé)
-  - Pour : un seul outil, très rapide.
-  - Contre : moins de règles que l'écosystème ESLint.
-- [ ] **B. ESLint + Prettier**
-  - Pour : le plus complet.
-  - Contre : lent, deux outils à configurer.
-- [ ] **C. Biome + oxlint**
-  - Pour : rapidité et règles supplémentaires.
-  - Contre : deux outils.
-
-**Décision :**
+*Remplacé par §6.2, qui tient compte de l'exigence de harnais strict.*
 
 ### 5.3 Tests
 
@@ -401,6 +391,76 @@ Contrainte du local-first : la session doit rester valable hors ligne. Si elle a
 
 ---
 
+## 6. Harnais anti-dérive
+
+L'exigence est décrite dans `CLAUDE.md` : des vérifications déterministes, impossibles à contourner, autour du code écrit par les LLM. Il reste à choisir les outils.
+
+### 6.1 Version de TypeScript
+
+- [ ] **A. TypeScript 7 (`tsgo`, natif en Go) pour le typecheck, et TypeScript 6.x pour l'outillage qui en dépend** (recommandé)
+  - Pour : un typecheck 8 à 12 fois plus rapide, ce qui permet de le lancer après chaque édition de Claude sans ralentir. TS 6.x reste là pour les outils qui ont besoin de l'API du compilateur.
+  - Contre : TS 7.0 (sorti le 8 juillet 2026) n'a pas encore d'API programmatique stable, attendue en 7.1. Deux versions à faire cohabiter pendant un temps.
+- [ ] **B. TypeScript 7 seul**
+  - Pour : une seule version.
+  - Contre : bloque les outils qui dépendent de l'API du compilateur, comme typescript-eslint.
+- [ ] **C. TypeScript 6.x seul**
+  - Pour : l'écosystème le plus compatible.
+  - Contre : typecheck nettement plus lent, ce qui pèse sur la boucle de vérification.
+
+**Décision :**
+
+### 6.2 Lint (avec information de types) et formatage
+
+- [ ] **A. oxlint + tsgolint (lint typé), plus un formateur (oxfmt ou Biome)** (recommandé)
+  - Pour : tsgolint est stable depuis 2026 (v7), aligné sur TS 7, et couvre 59 des 61 règles typées de typescript-eslint (`no-floating-promises`, `no-unsafe-*`, `switch-exhaustiveness-check`…). 12 à 18 fois plus rapide qu'ESLint, donc utilisable après chaque édition.
+  - Contre : il manque 2 règles, et les règles maison sont moins simples à écrire qu'avec ESLint.
+- [ ] **B. ESLint + typescript-eslint `strict-type-checked` + Prettier**
+  - Pour : la référence, le plus de règles, des règles maison faciles à écrire.
+  - Contre : lent sur un lint typé, et dépend de l'API de TS 6 (pas compatible avec TS 7 seul).
+- [ ] **C. Biome seul**
+  - Pour : un seul outil, très rapide.
+  - Contre : analyse typée moins complète que tsgolint ou typescript-eslint. Insuffisant pour un harnais strict.
+
+**Décision :**
+
+### 6.3 Règles d'architecture, code mort, duplication
+
+- [ ] **A. dependency-cruiser + knip + jscpd** (recommandé)
+  - Pour : dependency-cruiser impose les couches et le sens des imports et interdit les cycles. knip trouve le code, les exports et les dépendances inutilisés. jscpd détecte le copier-coller. Ce sont trois outils mûrs, avec une sortie que Claude peut lire.
+  - Contre : trois configurations à maintenir.
+- [ ] **B. Règles d'import du linter + knip**
+  - Pour : un outil de moins.
+  - Contre : contrôle des couches moins expressif, pas de détection de duplication.
+
+**Décision :**
+
+### 6.4 Hooks git
+
+- [ ] **A. Lefthook** (recommandé)
+  - Pour : un binaire rapide, exécution en parallèle, configuration YAML versionnée, pre-commit et pre-push.
+  - Contre : un outil de plus à installer.
+- [ ] **B. Husky + lint-staged**
+  - Pour : le plus répandu.
+  - Contre : deux paquets, plus lent.
+- [ ] **C. simple-git-hooks**
+  - Pour : minimal.
+  - Contre : pas de parallélisme ni de filtrage par fichiers modifiés.
+
+**Décision :**
+
+### 6.5 Tests de mutation
+
+- [ ] **A. StrykerJS sur le cœur métier et le moteur de sync, en CI** (recommandé)
+  - Pour : vérifie que les tests détectent vraiment les erreurs, et pas seulement qu'ils passent. C'est la meilleure parade aux tests creux écrits par un LLM.
+  - Contre : lent, donc réservé aux modules critiques et à la CI. Le support de `bun test` est à vérifier.
+- [ ] **B. Pas de tests de mutation, seulement des seuils de couverture**
+  - Pour : simple et rapide.
+  - Contre : la couverture mesure le code exécuté, pas le code vérifié.
+
+**Décision :**
+
+---
+
 ## À valider d'abord
 
 Des vérifications courtes, à faire avant le développement des fonctionnalités. Chacune peut remettre en cause un choix ci-dessus.
@@ -419,3 +479,11 @@ Des vérifications courtes, à faire avant le développement des fonctionnalité
 - [Prisma Compute sur le portage Rust](https://www.prisma.io/blog/bun-rust-rewrite-prisma-compute)
 - [Bun 1.4 : changements cassants (ecorpit)](https://ecorpit.com/bun-1-4-rust-rewrite-breaking-changes-production-2026/)
 - [Elysia : adaptateur Node](https://npmjs.com/package/%40elysiajs%2Fnode)
+
+## Sources sur le harnais (relevées le 2026-10-05)
+
+- [Best practices for Claude Code (doc officielle)](https://code.claude.com/docs/en/best-practices)
+- [Harness engineering for coding agent users (Böckeler, martinfowler.com)](https://martinfowler.com/articles/harness-engineering.html)
+- [TypeScript 7 released (InfoQ)](https://infoq.com/news/2026/08/typescript-7-released/)
+- [Type-Aware Linting Stable (Oxc)](https://oxc.rs/blog/2026-07-22-type-aware-linting-stable)
+- [How coding agents cheat on their tests](https://aimlcompanion.ai/blog/reward-hacking-coding-agents-2026)
