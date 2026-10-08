@@ -6,13 +6,13 @@ Ce que je dis des outils tiers reflète l'état connu au 2026-10-04 : à revéri
 
 ## Décisions prises
 
-| Domaine | Décision | Date |
-|---|---|---|
-| Langage | TypeScript strict, front et back | 2026-10-04 |
-| Runtime serveur | **Bun, dernière version stable**, figée à une version exacte (1.4.2 est la dernière que j'ai trouvée, à vérifier) | 2026-10-04 |
-| Dépendance à Bun | Assumée : on peut utiliser les API spécifiques à Bun, et le retour à Node n'est plus un objectif | 2026-10-04 |
-| Modèle d'application | **Local-first** : l'UI lit et écrit dans une copie locale des données, puis la synchronisation se fait en arrière-plan | 2026-10-04 |
-| Notifications de sync | **SSE** du serveur vers le client. Le push et le pull des données restent en HTTP | 2026-10-04 |
+| Domaine               | Décision                                                                                                               | Date       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Langage               | TypeScript strict, front et back                                                                                       | 2026-10-04 |
+| Runtime serveur       | **Bun, dernière version stable**, figée à une version exacte (1.4.2 est la dernière que j'ai trouvée, à vérifier)      | 2026-10-04 |
+| Dépendance à Bun      | Assumée : on peut utiliser les API spécifiques à Bun, et le retour à Node n'est plus un objectif                       | 2026-10-04 |
+| Modèle d'application  | **Local-first** : l'UI lit et écrit dans une copie locale des données, puis la synchronisation se fait en arrière-plan | 2026-10-04 |
+| Notifications de sync | **SSE** du serveur vers le client. Le push et le pull des données restent en HTTP                                      | 2026-10-04 |
 
 ### Garde-fous liés à Bun
 
@@ -45,7 +45,7 @@ Les choix 1 à 4 dépendent les uns des autres et conditionnent tout le reste. L
 
 ### 1.1 Niveau de fonctionnement hors ligne
 
-- [ ] **A. Hors ligne complet (lecture et écriture)** (recommandé, c'est ta demande initiale)
+- [x] **A. Hors ligne complet (lecture et écriture)** (recommandé, c'est ta demande initiale)
   - Pour : on peut tout faire dans le train ou en rendez-vous sans réseau, puis la sync se fait au retour.
   - Contre : il faut une file de mutations persistante, une résolution des conflits et la gestion des vieilles versions de l'app.
 - [ ] **B. Lecture hors ligne, écriture en ligne seulement**
@@ -61,7 +61,9 @@ Les choix 1 à 4 dépendent les uns des autres et conditionnent tout le reste. L
 
 *Dépend de 1.1. Conditionne 1.3 et 1.4.*
 
-- [ ] **A. Protocole maison (modèle Replicache)** (recommandé)
+
+
+- [x] **A. Protocole maison (modèle Replicache)** (recommandé)
   - Pour : maîtrise totale, règles de conflit métier, aucune dépendance au cœur du produit. La décision SSE s'y intègre directement. Le volume par start-up est petit, donc on réplique tout le workspace et on évite le problème le plus dur (la réplication partielle). Chaque mutation est écrite une fois et tourne côté client (optimiste) et côté serveur (fait foi).
   - Contre : c'est le composant le plus risqué à écrire. Il faut une simulation de convergence avec plusieurs clients, des coupures réseau et des réordonnancements, **avant** toute fonctionnalité.
 - [ ] **B. PowerSync** (Postgres répliqué vers un SQLite local)
@@ -82,6 +84,8 @@ Les choix 1 à 4 dépendent les uns des autres et conditionnent tout le reste. L
 ### 1.3 Stratégie de conflit
 
 *Dépend de 1.2.*
+
+
 
 - [ ] **A. Serveur arbitre + dernière écriture gagnante par champ** (recommandé)
   - Pour : simple à comprendre, les règles métier sont appliquées au même endroit, les rejets sont visibles dans une boîte « Conflits ».
@@ -108,6 +112,8 @@ Règles proposées avec l'option A :
 ### 1.4 Stockage local
 
 *Dépend de 1.2. Avec PowerSync, c'est SQLite d'office.*
+
+
 
 - [ ] **A. Store en mémoire + IndexedDB** (recommandé)
   - Pour : lectures synchrones, donc rendu immédiat. Simple. C'est le modèle de Linear.
@@ -178,6 +184,8 @@ Règles proposées avec l'option A :
 ### 2.2 Validation et schémas partagés
 
 *Les arguments des mutations sont validés côté client et côté serveur.*
+
+
 
 - [ ] **A. TypeBox** (recommandé si Elysia)
   - Pour : natif dans Elysia, très rapide, produit directement du JSON Schema, donc OpenAPI.
@@ -289,6 +297,8 @@ Contrainte du local-first : la session doit rester valable hors ligne. Si elle a
 ### 3.4 Recherche locale
 
 *Si 1.4 = SQLite, FTS5 devient l'option naturelle.*
+
+
 
 - [ ] **A. MiniSearch** (recommandé avec 1.4 A)
   - Pour : petit, mises à jour incrémentales, recherche par préfixe et approximative.
