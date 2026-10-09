@@ -87,7 +87,7 @@ Les choix 1 à 4 dépendent les uns des autres et conditionnent tout le reste. L
 
 
 
-- [ ] **A. Serveur arbitre + dernière écriture gagnante par champ** (recommandé)
+- [x] **A. Serveur arbitre + dernière écriture gagnante par champ** (recommandé)
   - Pour : simple à comprendre, les règles métier sont appliquées au même endroit, les rejets sont visibles dans une boîte « Conflits ».
   - Contre : quand deux personnes modifient le même champ, une modification est perdue. C'est rare dans un CRM, et c'est visible.
 - [ ] **B. Dernière écriture gagnante par ligne**
@@ -115,7 +115,7 @@ Règles proposées avec l'option A :
 
 
 
-- [ ] **A. Store en mémoire + IndexedDB** (recommandé)
+- [x] **A. Store en mémoire + IndexedDB** (recommandé)
   - Pour : lectures synchrones, donc rendu immédiat. Simple. C'est le modèle de Linear.
   - Contre : tout le jeu de données répliqué est en RAM, ce qui peut poser problème sur iPhone en gros volume (d'où 1.5). Pas de SQL local.
 - [ ] **B. SQLite-WASM sur OPFS (wa-sqlite)**
